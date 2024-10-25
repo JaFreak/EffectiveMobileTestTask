@@ -87,45 +87,6 @@ switch (i)
 
         //чтение содержимого текстового файла с заказами
         OrderExtractor(fileNameAndPath, districtFilter, timeStarFilter, timeEndFilter, ref ordersListForWork);
-        //using (StreamReader reader = new StreamReader(fileNameAndPath))
-        //{
-        //    string? line;
-        //    int o = 0;
-        //    while ((line = await reader.ReadLineAsync()) != null) //считываем строки из файла
-        //    {
-        //        string[] lineSplit = line.Split(' '); //делим одну строку на набор строк по словам
-        //        if (lineSplit[2] == districtFilter)     //зная структуру файла с заказами, проверяем относится ли заказ к нужному району
-        //        {
-        //            string[] timeValue = new string[] { lineSplit[3], lineSplit[4] };
-        //            string timeFromFile = string.Join(" ", timeValue);
-        //            if (DateTime.TryParseExact(timeFromFile, "yyyy-MM-dd HH:mm:ss",
-        //                CultureInfo.CurrentCulture, DateTimeStyles.None, out orderTime)) //дату и время разделило, объеденям снова
-        //            {
-        //                if (orderTime >= timeStarFilter && orderTime <= timeEndFilter) //проверяем попадает ли заказ в нужный временной интервал
-        //                {
-        //                    //если попадает создаем объект класса order и присваиваем ему свойства
-        //                    Order order = new Order();
-        //                    if (int.TryParse(lineSplit[0], out orderNumber))
-        //                        order.number = orderNumber;
-        //                    if (double.TryParse(lineSplit[1], out orderWeight))
-        //                        order.weight = orderWeight;
-        //
-        //                    order.district = districtFilter;
-        //                    order.orderTime = orderTime;
-        //                    //складываем объекты в список
-        //                    ordersListForWork.Insert(o, order);
-        //                    o++;
-        //                    Console.WriteLine(line);
-        //                }
-        //            }
-        //            else
-        //                continue;
-        //        }
-        //        else
-        //            continue;
-        //    }
-        //    reader.Close();
-        //}
         break;
     case 2:
         Console.WriteLine("Расчет");
