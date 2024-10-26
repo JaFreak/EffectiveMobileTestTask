@@ -1,12 +1,10 @@
-﻿// создаем файл
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Globalization;
 
 string path = Directory.GetCurrentDirectory();
 string inputFileNameAndPath = path + "\\initial_data.txt";
 string logFileNameAndPath = path + "\\_deliveryLog.txt";
 string finalFileNameAndPath = path + "\\_deliveryOrder.txt";
-
 //переменные для фильтрации и сортировки заказов
 string districtFilter = null;
 int orderNumber = 0;
@@ -14,11 +12,7 @@ double orderWeight = 0;
 DateTime orderTime = new DateTime();
 
 Random rnd = new Random();
-
-string district0 = "downTown";
-string district1 = "centre";
-string district2 = "suburbia";
-string district3 = "industrial";
+string[] districts = { "downTown", "centre", "suburbia", "industrial" };
 var startTime = DateTime.Today;
 List<Order> ordersList = new List<Order>(1000);
 List<Order> ordersListForWork = new List<Order>(ordersList.Capacity);
@@ -29,18 +23,18 @@ Console.WriteLine("Выберите действие \n1 Генерироват�
 int f = int.Parse(Console.ReadLine());
 switch (f)
 {
-    case 1:        
-        //генерируем файл с заказами
-        GenerateInputFile(inputFileNameAndPath);
+    case 1:
+        GenerateInputFile(inputFileNameAndPath, districts);
         break;
-    case 2:
 
+    case 2:
         Console.WriteLine("Введите путь к текстовому документу с заказами");
         //inputFileNameAndPath = string.Format("@{0}",Console.ReadLine());
         inputFileNameAndPath = Console.ReadLine();
         string logMes = "Выбран файл с заказами. Расположение файла:" + inputFileNameAndPath;
         GenerateLogFile(logFileNameAndPath, logMes);
         break;
+
     default:
         Console.WriteLine("Отмена");
         GenerateLogFile(logFileNameAndPath, "Выход из программы \n");
@@ -57,29 +51,18 @@ switch (i)
     case 1:
         GenerateLogFile(logFileNameAndPath, "Начало ввода параметров фильтрации");
         Console.WriteLine("Ввод параметров фильтрации");
-        // вывод вариантов для выбора района        
-        ChooseDistrict(out districtFilter);
-
+        ChooseDistrict(districts,out districtFilter, out bool districtChoosed);
+        if (districtChoosed == false)
+            return;
         //запрос начала отсчета времени для сортировки заказов
         string timeFormat = "HH:mm:ss";
         Console.WriteLine("Введите время первого заказа в формате 00:00:00");
         string timeFromConcole = Console.ReadLine();
-        if (DateTime.TryParseExact(timeFromConcole, timeFormat, CultureInfo.CurrentCulture, DateTimeStyles.None, out timeStarFilter))
-        {
-            timeEndFilter = timeStarFilter.AddMinutes(30);
-            Console.WriteLine("Введено время {0}", timeStarFilter);
-        }
-        else
-        {
-            Console.WriteLine("Не верный ввод, программа завершила работу");
-            string logMes0 = "Ввод параметров фильтрации завершен с ошибкой. " + "Выбран район: " + districtFilter + ". Время введено некорректно: " + timeFromConcole + "\n";
-            GenerateLogFile(logFileNameAndPath, logMes0);
-            break;
-        }
-        string logMes = "Ввод параметров фильтрации завершен. " + "Выбран район: " + districtFilter + ". Введено время: " + timeStarFilter;
-        GenerateLogFile(logFileNameAndPath, logMes);
+        TimeCheck(timeFromConcole, timeFormat, out timeStarFilter, out timeEndFilter, out bool done);
+        if (done == false)
+            return;
         //чтение содержимого текстового файла с заказами
-        OrderExtractor(inputFileNameAndPath, districtFilter, timeStarFilter, timeEndFilter, ordersListForWork);        
+        OrderExtractor(inputFileNameAndPath, districtFilter, timeStarFilter, timeEndFilter, ordersListForWork);
         return;
     case 2:
         Console.WriteLine("Введите путь к текстовому документу с параметрами фильтрации заказов (название_района HH:mm:ss)");
@@ -91,26 +74,25 @@ switch (i)
         {
             string? line;
             line = reader.ReadLine(); //считываем строку из файла
-
             string[] lineSplitFilter = line.Split(' ');
-            districtFilterFromFile = lineSplitFilter[0];
-            Console.WriteLine("Выбран район {0}", districtFilterFromFile);
-
-            string timeFormat2 = "HH:mm:ss";
-            if (DateTime.TryParseExact(lineSplitFilter[1], timeFormat2, CultureInfo.CurrentCulture, DateTimeStyles.None, out timeStarFilter))
+            if (districts.Contains(lineSplitFilter[0]))
             {
-                timeEndFilter = timeStarFilter.AddMinutes(30);
-                Console.WriteLine("Введено время {0}", timeStarFilter);
-                string logMes3 = "Ввод параметров фильтрации завершен." + "Выбран район " + districtFilterFromFile + "Введено время: " + timeStarFilter;
-                GenerateLogFile(logFileNameAndPath, logMes3);
+                districtFilterFromFile = lineSplitFilter[0];
+                Console.WriteLine("Выбран район {0}", districtFilterFromFile);
+                string logMes = "Выбран район: " + districtFilterFromFile;
+                GenerateLogFile(logFileNameAndPath, logMes);
             }
             else
             {
-                Console.WriteLine("Время указано в неправильном формате, укажите время в формате HH:mm:ss. Программа завершила работу");
-                string logMes4 = "Ввод параметров фильтрации завершен с ошибкой." + "Выбран район " + districtFilterFromFile + "Время введено некорректно: " + lineSplitFilter[1] + "\n";
-                GenerateLogFile(logFileNameAndPath, logMes4);
+                Console.WriteLine("Указанный район {0} не доступен. Программа завершила работу", lineSplitFilter[0]);
+                string logMes = "Указанный район "+ lineSplitFilter[0] + " не доступен. Ввод параметров фильтрации завершен с ошибкой. Программа завершила работу";
+                GenerateLogFile(logFileNameAndPath, logMes);
                 return;
             }
+            string timeFormat2 = "HH:mm:ss";
+            TimeCheck(lineSplitFilter[1], timeFormat2, out timeStarFilter, out timeEndFilter, out done);
+            if (done == false)
+                return;
             reader.Close();
         }
 
@@ -123,7 +105,7 @@ switch (i)
 }
 
 
-void GenerateInputFile(string pathToFile)
+void GenerateInputFile(string pathToFile, string[] districts)
 {
     using (StreamWriter writer = new StreamWriter(pathToFile, false))
     {
@@ -133,17 +115,9 @@ void GenerateInputFile(string pathToFile)
             string nameForOrder = "order" + number.ToString();
             double weight = 0.1 + rnd.NextDouble() * (10.67 - 0.1);
             weight = Math.Round(weight, 3);
-            int districtNumber = rnd.Next(0, 3);
+            int districtNumber = rnd.Next(0, districts.Count());
+            string districtName = districts[districtNumber];
             var newTime = startTime.AddSeconds(rnd.Next(0, 86400));
-            string districtName = null;
-            if (districtNumber == 0)
-                districtName = district0;
-            else if (districtNumber == 1)
-                districtName = district1;
-            else if (districtNumber == 2)
-                districtName = district2;
-            else if (districtNumber == 3)
-                districtName = district3;
             Order newOrder = new Order();
             ordersList.Insert(l, newOrder);
             ordersList[l].orderName = nameForOrder;
@@ -160,33 +134,51 @@ void GenerateInputFile(string pathToFile)
     GenerateLogFile(logFileNameAndPath, "Создан файл с заказами");
     Console.WriteLine("Файл создан");
 }
-void ChooseDistrict(out string districtName)
+void ChooseDistrict(string[] districts, out string districtName, out bool done)
 {
-    Console.WriteLine("Выберите район города \n1 downTown\n2 centre\n3 suburbia\n4 industrial\nЛюбое другое значение для выхода");
-    int value = int.Parse(Console.ReadLine());
-    switch (value)
+    string districtRequest = null;
+    //формируем список вариантов для выбора пользователем, основанным на списке районов
+    for (int i = 0; i < districts.Length; i++)
     {
-        case 1:
-            districtName = "downTown";
-            Console.WriteLine("Выбран район {0}", districtName);
-            break;
-        case 2:
-            districtName = "centre";
-            Console.WriteLine("Выбран район {0}", districtName);
-            break;
-        case 3:
-            districtName = "suburbia";
-            Console.WriteLine("Выбран район {0}", districtName);
-            break;
-        case 4:
-            districtName = "industrial";
-            Console.WriteLine("Выбран район {0}", districtName);
-            break;
-        default:
-            districtName = null;
-            Console.WriteLine("Отмена");
-            GenerateLogFile(logFileNameAndPath, "Район не задан. Выход из программы");
-            return;
+       districtRequest = districtRequest+"\n" + i.ToString() + " " + districts[i];
+    }
+    Console.WriteLine("Выберите район города" + districtRequest +"\nЛюбое другое значение для выхода");
+    int value = int.Parse(Console.ReadLine());
+    if (value < districts.Length)
+    {
+        districtName = districts[value];
+        Console.WriteLine("Выбран район {0}", districtName);
+        done = true;
+    }
+    else
+    {
+        districtName = null;
+        Console.WriteLine("Район не задан. Выход из программы");
+        GenerateLogFile(logFileNameAndPath, "Район не задан. Выход из программы");
+        done = false;
+    }
+
+    string logMes = "Выбран район: " + districtName;
+    GenerateLogFile(logFileNameAndPath, logMes);
+}
+
+void TimeCheck(string time, string format, out DateTime start, out DateTime end, out bool done)
+{
+    if (DateTime.TryParseExact(time, format, CultureInfo.CurrentCulture, DateTimeStyles.None, out start))
+    {
+        end = start.AddMinutes(30);
+        Console.WriteLine("Введено время {0}", start);
+        string logMes0 = "Введено время: " + start + ". Ввод параметров фильтрации завершен.";
+        GenerateLogFile(logFileNameAndPath, logMes0);
+        done = true;
+    }
+    else
+    {
+        Console.WriteLine("Время введено некорректно: " + time + ". Программа завершила работу.\n");
+        end = new DateTime();
+        string logMes0 = "Время введено некорректно: " + time + ". Ввод параметров фильтрации завершен с ошибкой. Программа завершила работу.\n";
+        GenerateLogFile(logFileNameAndPath, logMes0);
+        done = false;
     }
 }
 
@@ -245,7 +237,7 @@ void OrderExtractor(string fileNameAndPath, string districtName, DateTime start,
         }
         writer2.Close();
     }
-    string logMes = "Файл с результатом выборки сформирован. Отобрано заказов: "+ filteredOrders.Count.ToString()+". Путь к файлу: " + finalFileNameAndPath + ". Программа завершила работу.\n";
+    string logMes = "Файл с результатом выборки сформирован. Отобрано заказов: " + filteredOrders.Count.ToString() + ". Путь к файлу: " + finalFileNameAndPath + ". Программа завершила работу.\n";
     GenerateLogFile(logFileNameAndPath, logMes);
 }
 
@@ -253,7 +245,7 @@ void GenerateLogFile(string pathToFile, string message)
 {
     using (StreamWriter logWriter = new StreamWriter(pathToFile, true))
     {
-        logWriter.WriteLine("Время записи: {0}     Событие: {1}", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"), message);
+        logWriter.WriteLine("Время записи: {0} \n   Событие: {1}", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"), message);
         logWriter.Close();
     }
 }
