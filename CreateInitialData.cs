@@ -31,43 +31,11 @@ switch (f)
     case 1:
         //генерируем файл с заказами
         GenerateInputFile(inputFileNameAndPath);
-        //using (StreamWriter writer = new StreamWriter(fileNameAndPath, false))
-        //{
-        //    for (int l = 0; l < ordersList.Capacity; l++)
-        //    {
-        //        int number = l + 1;
-        //        string nameForOrder = "order" + number.ToString();
-        //        double weight = 0.1 + rnd.NextDouble() * (10.67 - 0.1);
-        //        weight = Math.Round(weight, 3);
-        //        int districtNumber = rnd.Next(0, 3);
-        //        var newTime = startTime.AddSeconds(rnd.Next(0, 86400));
-        //        string districtName = null;
-        //        if (districtNumber == 0)
-        //            districtName = district0;
-        //        else if (districtNumber == 1)
-        //            districtName = district1;
-        //        else if (districtNumber == 2)
-        //            districtName = district2;
-        //        else if (districtNumber == 3)
-        //            districtName = district3;
-        //        Order newOrder = new Order();
-        //        ordersList.Insert(l, newOrder);
-        //        ordersList[l].orderName = nameForOrder;
-        //        ordersList[l].number = number;
-        //        ordersList[l].weight = weight;
-        //        ordersList[l].district = districtName;
-        //        ordersList[l].orderTime = newTime;
-
-        //        writer.WriteLine("{0} {1} {2} {3}", ordersList[l].number.ToString(), ordersList[l].weight.ToString(),
-        //          ordersList[l].district.ToString(), ordersList[l].orderTime.ToString("yyyy-MM-dd HH:mm:ss"));
-        //    }
-        //    writer.Close();
-        //}
-        //Console.WriteLine("Файл создан");
         break;
     case 2:
         Console.WriteLine("Введите путь к текстовому документу с заказами");
-        inputFileNameAndPath = "@" + Console.ReadLine();
+        //inputFileNameAndPath = string.Format("@{0}",Console.ReadLine());
+        inputFileNameAndPath = Console.ReadLine();
         break;
     default:
         return;
@@ -91,7 +59,7 @@ switch (i)
         if (DateTime.TryParseExact(Console.ReadLine(), timeFormat, CultureInfo.CurrentCulture, DateTimeStyles.None, out timeStarFilter))
         {
             timeEndFilter = timeStarFilter.AddMinutes(30);
-            Console.WriteLine("Введёно время {0}", timeStarFilter);
+            Console.WriteLine("Введено время {0}", timeStarFilter);
         }
         else
         {
@@ -114,29 +82,35 @@ switch (i)
         //    }
         //    writer2.Close();
         //}
-        break;
+        return;
     case 2:
-        Console.WriteLine("Введите путь к текстовому документу с параметрами фильтрации заказов (название_района HH:mm:ss");
-        string filterFileNameAndPath = "@" + Console.ReadLine();
+        Console.WriteLine("Введите путь к текстовому документу с параметрами фильтрации заказов (название_района HH:mm:ss)");
+        string filterFileNameAndPath = Console.ReadLine();
         string districtFilterFromFile = null;
         using (StreamReader reader = new StreamReader(filterFileNameAndPath))
         {
             string? line;
-            int q = 0;
-            while ((line = reader.ReadLine()) != null) //считываем строку из файла
+            line = reader.ReadLine(); //считываем строку из файла
+
+            string[] lineSplitFilter = line.Split(' ');
+            districtFilterFromFile = lineSplitFilter[0];
+            Console.WriteLine("Выбран район {0}", districtFilterFromFile);
+
+            string timeFormat2 = "HH:mm:ss";
+            if (DateTime.TryParseExact(lineSplitFilter[1], timeFormat2, CultureInfo.CurrentCulture, DateTimeStyles.None, out timeStarFilter))
             {
-                string[] lineSplitFilter = line.Split(' ');
-                districtFilterFromFile = lineSplitFilter[0];
-                string[] filterTimeValue = new string[] { lineSplitFilter[1], lineSplitFilter[2] };
-                string timeFromFile = string.Join(" ", filterTimeValue);
-                if (DateTime.TryParseExact(timeFromFile, "yyyy-MM-dd HH:mm:ss",
-                    CultureInfo.CurrentCulture, DateTimeStyles.None, out timeStarFilter)) //дату и время разделило, объеденям снова                        
-                    timeEndFilter = timeStarFilter.AddMinutes(30);
+                timeEndFilter = timeStarFilter.AddMinutes(30);
+                Console.WriteLine("Введено время {0}", timeStarFilter);
+            }
+            else
+            {
+                Console.WriteLine("Время указано в неправильном формате, укажите время в формате HH:mm:ss. Программа завершила работу");
+                return;
             }
             reader.Close();
         }
         OrderExtractor(inputFileNameAndPath, districtFilterFromFile, timeStarFilter, timeEndFilter, ordersListForWork);
-        break;
+        return;
     default:
         Console.WriteLine("Отмена");
         return;
