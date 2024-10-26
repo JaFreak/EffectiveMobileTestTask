@@ -3,62 +3,78 @@ using System.Collections.Generic;
 using System.Globalization;
 
 string path = Directory.GetCurrentDirectory();
-string fileNameAndPath = path + "\\initial_data.txt";
+string inputFileNameAndPath = path + "\\initial_data.txt";
+string logFileNameAndPath = path + "\\_deliveryLog.txt";
+string finalFileNameAndPath = path + "\\_deliveryOrder.txt";
 
-//нужен рандомайзер
+//переменные для фильтрации и сортировки заказов
+string districtFilter = null;
+int orderNumber = 0;
+double orderWeight = 0;
+DateTime orderTime = new DateTime();
+
 Random rnd = new Random();
-// создать коллекцию с номерами заказов
+
 string district0 = "downTown";
 string district1 = "centre";
 string district2 = "suburbia";
 string district3 = "industrial";
 var startTime = DateTime.Today;
-List<Order> ordersList = new List<Order>(100);
-
-//генерируем файл с заказами
-using (StreamWriter writer = new StreamWriter(fileNameAndPath, false))
+List<Order> ordersList = new List<Order>(1000);
+List<Order> ordersListForWork = new List<Order>(ordersList.Capacity);
+List<Order> ordersSorted = new List<Order>(ordersList.Capacity);
+Console.WriteLine("Выберите действие \n1 Генерировать файл с заказами\n2 Выбор готового файла с заказами" +
+    "\nЛюбое другое значение для выхода");
+int f = int.Parse(Console.ReadLine());
+switch (f)
 {
-    for (int l = 0; l < ordersList.Capacity; l++)
-    {
-        int number = l + 1;
-        string nameForOrder = "order" + number.ToString();
-        double weight = 0.1 + rnd.NextDouble() * (10.67 - 0.1);
-        weight = Math.Round(weight, 3);
-        int districtNumber = rnd.Next(0, 3);
-        var newTime = startTime.AddSeconds(rnd.Next(0, 86400));
-        string districtName = null;
-        if (districtNumber == 0)
-            districtName = district0;
-        else if (districtNumber == 1)
-            districtName = district1;
-        else if (districtNumber == 2)
-            districtName = district2;
-        else if (districtNumber == 3)
-            districtName = district3;
-        Order newOrder = new Order();
-        ordersList.Insert(l, newOrder);
-        ordersList[l].orderName = nameForOrder;
-        ordersList[l].number = number;
-        ordersList[l].weight = weight;
-        ordersList[l].district = districtName;
-        ordersList[l].orderTime = newTime;
+    case 1:
+        //генерируем файл с заказами
+        GenerateInputFile(inputFileNameAndPath);
+        //using (StreamWriter writer = new StreamWriter(fileNameAndPath, false))
+        //{
+        //    for (int l = 0; l < ordersList.Capacity; l++)
+        //    {
+        //        int number = l + 1;
+        //        string nameForOrder = "order" + number.ToString();
+        //        double weight = 0.1 + rnd.NextDouble() * (10.67 - 0.1);
+        //        weight = Math.Round(weight, 3);
+        //        int districtNumber = rnd.Next(0, 3);
+        //        var newTime = startTime.AddSeconds(rnd.Next(0, 86400));
+        //        string districtName = null;
+        //        if (districtNumber == 0)
+        //            districtName = district0;
+        //        else if (districtNumber == 1)
+        //            districtName = district1;
+        //        else if (districtNumber == 2)
+        //            districtName = district2;
+        //        else if (districtNumber == 3)
+        //            districtName = district3;
+        //        Order newOrder = new Order();
+        //        ordersList.Insert(l, newOrder);
+        //        ordersList[l].orderName = nameForOrder;
+        //        ordersList[l].number = number;
+        //        ordersList[l].weight = weight;
+        //        ordersList[l].district = districtName;
+        //        ordersList[l].orderTime = newTime;
 
-        writer.WriteLine("{0} {1} {2} {3}", ordersList[l].number.ToString(), ordersList[l].weight.ToString(),
-          ordersList[l].district.ToString(), ordersList[l].orderTime.ToString("yyyy-MM-dd HH:mm:ss"));
-    }
-    writer.Close();
+        //        writer.WriteLine("{0} {1} {2} {3}", ordersList[l].number.ToString(), ordersList[l].weight.ToString(),
+        //          ordersList[l].district.ToString(), ordersList[l].orderTime.ToString("yyyy-MM-dd HH:mm:ss"));
+        //    }
+        //    writer.Close();
+        //}
+        //Console.WriteLine("Файл создан");
+        break;
+    case 2:
+        Console.WriteLine("Введите путь к текстовому документу с заказами");
+        inputFileNameAndPath = "@" + Console.ReadLine();
+        break;
+    default:
+        return;
 }
-Console.WriteLine("Файл создан");
 
-//переменные для фильтрации и сортировки заказов
-string districtFilter = null;
-List<Order> ordersListForWork = new List<Order>(ordersList.Count);
-int orderNumber = 0;
-double orderWeight = 0;
-DateTime orderTime = new DateTime();
-
-Console.WriteLine("Выберите действие \n1 Ввод параметров фильтрации\n2 Расчет\n3 Сохранение\n4 выход");
-
+Console.WriteLine("Выберите действие \n1 Ввод параметров фильтрации\n2 Выбор файлов с параметрами фильтрации" +
+    "\nЛюбое другое значение для выхода");
 int i = int.Parse(Console.ReadLine());
 DateTime timeStarFilter = DateTime.Now;
 DateTime timeEndFilter = timeStarFilter.AddMinutes(30);
@@ -66,10 +82,8 @@ switch (i)
 {
     case 1:
         Console.WriteLine("Ввод");
-        // вывод вариантов для выбора района
-        Console.WriteLine("Выберите район города \n1 downTown\n2 centre\n3 suburbia\n4 industrial\nЛюбое другое значение для выхода");
-        int d = int.Parse(Console.ReadLine());
-        ChooseDistrict(d, out districtFilter);
+        // вывод вариантов для выбора района        
+        ChooseDistrict(out districtFilter);
 
         //запрос начала отсчета времени для сортировки заказов
         string timeFormat = "HH:mm:ss";
@@ -84,18 +98,44 @@ switch (i)
             Console.WriteLine("Не верный ввод, программа завершила работу");
             break;
         }
-
         //чтение содержимого текстового файла с заказами
-        OrderExtractor(fileNameAndPath, districtFilter, timeStarFilter, timeEndFilter, ref ordersListForWork);
+        OrderExtractor(inputFileNameAndPath, districtFilter, timeStarFilter, timeEndFilter, ordersListForWork);
+        //ordersListForWork.Sort((x, y) => DateTime.Compare(x.orderTime, y.orderTime));
+        ////ordersSorted = ordersListForWork.OrderBy(o => DateTime o.orderTime);
+        //using (StreamWriter writer2 = new StreamWriter(finalFileNameAndPath, false))
+        //{
+        //    foreach (Order o in ordersListForWork)
+        //    {
+        //        Console.WriteLine("{0} {1} {2} {3}", o.number.ToString(), o.weight.ToString(),
+        //          o.district.ToString(), o.orderTime.ToString("yyyy-MM-dd HH:mm:ss"));
+        //
+        //        writer2.WriteLine("{0} {1} {2} {3}", o.number.ToString(), o.weight.ToString(),
+        //      o.district.ToString(), o.orderTime.ToString("yyyy-MM-dd HH:mm:ss"));
+        //    }
+        //    writer2.Close();
+        //}
         break;
     case 2:
-        Console.WriteLine("Расчет");
-        break;
-    case 3:
-        Console.WriteLine("Сохранение");
-        break;
-    case 4:
-        Console.WriteLine("выход");
+        Console.WriteLine("Введите путь к текстовому документу с параметрами фильтрации заказов (название_района HH:mm:ss");
+        string filterFileNameAndPath = "@" + Console.ReadLine();
+        string districtFilterFromFile = null;
+        using (StreamReader reader = new StreamReader(filterFileNameAndPath))
+        {
+            string? line;
+            int q = 0;
+            while ((line = reader.ReadLine()) != null) //считываем строку из файла
+            {
+                string[] lineSplitFilter = line.Split(' ');
+                districtFilterFromFile = lineSplitFilter[0];
+                string[] filterTimeValue = new string[] { lineSplitFilter[1], lineSplitFilter[2] };
+                string timeFromFile = string.Join(" ", filterTimeValue);
+                if (DateTime.TryParseExact(timeFromFile, "yyyy-MM-dd HH:mm:ss",
+                    CultureInfo.CurrentCulture, DateTimeStyles.None, out timeStarFilter)) //дату и время разделило, объеденям снова                        
+                    timeEndFilter = timeStarFilter.AddMinutes(30);
+            }
+            reader.Close();
+        }
+        OrderExtractor(inputFileNameAndPath, districtFilterFromFile, timeStarFilter, timeEndFilter, ordersListForWork);
         break;
     default:
         Console.WriteLine("Отмена");
@@ -103,28 +143,63 @@ switch (i)
 }
 
 
-
-
-
-void ChooseDistrict(int value, out string districtName)
+void GenerateInputFile(string pathToFile)
 {
+    using (StreamWriter writer = new StreamWriter(pathToFile, false))
+    {
+        for (int l = 0; l < ordersList.Capacity; l++)
+        {
+            int number = l + 1;
+            string nameForOrder = "order" + number.ToString();
+            double weight = 0.1 + rnd.NextDouble() * (10.67 - 0.1);
+            weight = Math.Round(weight, 3);
+            int districtNumber = rnd.Next(0, 3);
+            var newTime = startTime.AddSeconds(rnd.Next(0, 86400));
+            string districtName = null;
+            if (districtNumber == 0)
+                districtName = district0;
+            else if (districtNumber == 1)
+                districtName = district1;
+            else if (districtNumber == 2)
+                districtName = district2;
+            else if (districtNumber == 3)
+                districtName = district3;
+            Order newOrder = new Order();
+            ordersList.Insert(l, newOrder);
+            ordersList[l].orderName = nameForOrder;
+            ordersList[l].number = number;
+            ordersList[l].weight = weight;
+            ordersList[l].district = districtName;
+            ordersList[l].orderTime = newTime;
+
+            writer.WriteLine("{0} {1} {2} {3}", ordersList[l].number.ToString(), ordersList[l].weight.ToString(),
+              ordersList[l].district.ToString(), ordersList[l].orderTime.ToString("yyyy-MM-dd HH:mm:ss"));
+        }
+        writer.Close();
+    }
+    Console.WriteLine("Файл создан");
+}
+void ChooseDistrict(out string districtName)
+{
+    Console.WriteLine("Выберите район города \n1 downTown\n2 centre\n3 suburbia\n4 industrial\nЛюбое другое значение для выхода");
+    int value = int.Parse(Console.ReadLine());
     switch (value)
     {
         case 1:
             districtName = "downTown";
-            Console.WriteLine("Выбран район {0}", districtFilter);
+            Console.WriteLine("Выбран район {0}", districtName);
             break;
         case 2:
             districtName = "centre";
-            Console.WriteLine("Выбран район {0}", districtFilter);
+            Console.WriteLine("Выбран район {0}", districtName);
             break;
         case 3:
             districtName = "suburbia";
-            Console.WriteLine("Выбран район {0}", districtFilter);
+            Console.WriteLine("Выбран район {0}", districtName);
             break;
         case 4:
             districtName = "industrial";
-            Console.WriteLine("Выбран район {0}", districtFilter);
+            Console.WriteLine("Выбран район {0}", districtName);
             break;
         default:
             districtName = null;
@@ -133,7 +208,7 @@ void ChooseDistrict(int value, out string districtName)
     }
 }
 
-void OrderExtractor (string fileNameAndPath,string districtName, DateTime start, DateTime end, ref List<Order> filteredOrders) 
+void OrderExtractor(string fileNameAndPath, string districtName, DateTime start, DateTime end, List<Order> filteredOrders)
 {
     using (StreamReader reader = new StreamReader(fileNameAndPath))
     {
@@ -142,28 +217,27 @@ void OrderExtractor (string fileNameAndPath,string districtName, DateTime start,
         while ((line = reader.ReadLine()) != null) //считываем строки из файла
         {
             string[] lineSplit = line.Split(' '); //делим одну строку на набор строк по словам
-            if (lineSplit[2] == districtFilter)     //зная структуру файла с заказами, проверяем относится ли заказ к нужному району
+            if (lineSplit[2] == districtName)     //зная структуру файла с заказами, проверяем относится ли заказ к нужному району
             {
                 string[] timeValue = new string[] { lineSplit[3], lineSplit[4] };
                 string timeFromFile = string.Join(" ", timeValue);
                 if (DateTime.TryParseExact(timeFromFile, "yyyy-MM-dd HH:mm:ss",
-                    CultureInfo.CurrentCulture, DateTimeStyles.None, out orderTime)) //дату и время разделило, объеденям снова
+                    CultureInfo.CurrentCulture, DateTimeStyles.None, out DateTime orderTime)) //дату и время разделило, объеденям снова
                 {
                     if (orderTime >= start && orderTime <= end) //проверяем попадает ли заказ в нужный временной интервал
                     {
                         //если попадает создаем объект класса order и присваиваем ему свойства
                         Order order = new Order();
-                        if (int.TryParse(lineSplit[0], out orderNumber))
+                        if (int.TryParse(lineSplit[0], out int orderNumber))
                             order.number = orderNumber;
-                        if (double.TryParse(lineSplit[1], out orderWeight))
+                        if (double.TryParse(lineSplit[1], out double orderWeight))
                             order.weight = orderWeight;
 
-                        order.district = districtFilter;
+                        order.district = districtName;
                         order.orderTime = orderTime;
                         //складываем объекты в список
                         filteredOrders.Insert(o, order);
                         o++;
-                        Console.WriteLine(line);
                     }
                 }
                 else
@@ -174,7 +248,21 @@ void OrderExtractor (string fileNameAndPath,string districtName, DateTime start,
         }
         reader.Close();
     }
+    filteredOrders.Sort((x, y) => DateTime.Compare(x.orderTime, y.orderTime));
+    using (StreamWriter writer2 = new StreamWriter(finalFileNameAndPath, false))
+    {
+        foreach (Order o in filteredOrders)
+        {
+            Console.WriteLine("{0} {1} {2} {3}", o.number.ToString(), o.weight.ToString(),
+              o.district.ToString(), o.orderTime.ToString("yyyy-MM-dd HH:mm:ss"));
+
+            writer2.WriteLine("{0} {1} {2} {3}", o.number.ToString(), o.weight.ToString(),
+          o.district.ToString(), o.orderTime.ToString("yyyy-MM-dd HH:mm:ss"));
+        }
+        writer2.Close();
+    }
 }
+
 
 class Order
 {
